@@ -1,0 +1,43 @@
+// Creating the Pipeline of Airports as Exercise 1 of MADE SS24
+// FAU-MADE cars template is used as an example to read CSV file from web and store it in sqlite database
+// Structuring pipeline with blocks
+pipeline Airports {
+	AirportsExtractor -> AirportsTextFileInterpreter;
+	AirportsTextFileInterpreter
+		-> AirportsCSVInterpreter 
+	   	-> AirportsTableInterpreter
+		-> AirportsLoader;
+    // Use the URL to extract the data
+	block AirportsExtractor oftype HttpExtractor {
+		url: "https://opendata.rhein-kreis-neuss.de/api/explore/v2.1/catalog/datasets/rhein-kreis-neuss-flughafen-weltweit/exports/csv?lang=en&timezone=Europe%2FBerlin&use_labels=true&delimiter=%3B";
+	}
+    // Interpretation of text and csv file
+	block AirportsTextFileInterpreter oftype TextFileInterpreter { }
+	block AirportsCSVInterpreter oftype CSVInterpreter {
+		delimiter: ";";
+		}
+    // Assignment of Datatype and extraction of values
+	block AirportsTableInterpreter oftype TableInterpreter {
+		header: true;
+		columns: [
+			"Lfd. Nummer" oftype integer,
+			"Name des Flughafens" oftype text,
+			"Ort" oftype text,
+			"Land" oftype text,
+			"IATA" oftype text,
+			"ICAO" oftype text,
+			"Latitude" oftype decimal,
+			"Longitude" oftype decimal,
+			"Altitude" oftype integer,
+			"Zeitzone" oftype decimal,
+			"DST" oftype text,
+			"Zeitzonen-Datenbank" oftype text,
+			"geo_punkt" oftype text
+		];
+	}
+    // Load the interpreted data in sqlite table to use for data analysis
+	block AirportsLoader oftype SQLiteLoader {
+		table: "airports";
+		file: "./airports.sqlite";
+	}
+}
