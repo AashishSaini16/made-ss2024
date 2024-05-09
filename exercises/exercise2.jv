@@ -1,0 +1,86 @@
+// Creating pipeline of Exercise 2 of MADE at FAU
+// Composite block is used for simplification
+
+composite blocktype TextFileExtractor {
+    property url oftype text;
+
+    input inputName oftype None;
+    output outputName oftype File;
+
+    block FileExtractor oftype HttpExtractor { url: url; }
+
+    block FileTextInterpreter oftype TextFileInterpreter {}
+
+    inputName
+        ->FileExtractor
+        ->FileTextInterpreter
+        ->outputName;
+}
+
+composite blocktype CSVExtractor {
+    property url oftype text;
+    property delimiter oftype text: ',';
+    property enclosing oftype text: '';
+    property enclosingEscape oftype text: '';
+
+    input inputName oftype None;
+    output outputName oftype Sheet;
+
+    block TextFileExtractor oftype TextFileExtractor { url: url; }
+
+    block FileCSVInterpreter oftype CSVInterpreter {
+        delimiter: delimiter;
+        enclosing: enclosing;
+        enclosingEscape: enclosingEscape;
+    }
+
+    inputName
+        ->TextFileExtractor
+        ->FileCSVInterpreter
+        ->outputName;
+}
+
+
+// Now using the composite block
+
+pipeline TreesPipeline {
+
+    TreesExtractor
+        -> TreesTableInterpreter
+        -> TreesLoader;
+
+    // Providing the URL and delimiter according to the data to CSV Extractor
+
+    block TreesExtractor oftype CSVExtractor {
+        url : "https://opendata.rhein-kreis-neuss.de/api/v2/catalog/datasets/stadt-neuss-herbstpflanzung-2023/exports/csv";
+        delimiter : ";";
+    }
+
+    block TreesTableInterpreter oftype TableInterpreter {
+        header: true;
+        columns: [
+            "lfd_nr" oftype integer,
+            "stadtteil" oftype CityValueType, // adding city constraints
+			"standort" oftype text,
+			"baumart_botanisch" oftype text,
+			// "baumart_deutsch" oftype text,
+            // Dropping above column as required
+			"id" oftype text,
+			"baumfamilie" oftype text,
+        ];
+    }
+
+    block TreesLoader oftype SQLiteLoader {
+        table : "trees";
+        file : "trees.sqlite";
+    }
+}
+
+valuetype CityValueType oftype text {
+    constraints : [
+        StartsWithFurth,
+    ];
+}    
+// Regex on text to only have cities in Furth
+constraint StartsWithFurth on text :
+    value matches /^Furth-.*/;
