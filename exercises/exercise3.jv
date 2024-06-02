@@ -1,0 +1,115 @@
+// Exercise 3 of MADE at FAU
+// Composite block type for extracting text files from a given URL
+composite blocktype TextFileExtractor {
+    property url oftype text;
+
+    input inputName oftype None;  // Define the input type as None
+    output outputName oftype File;  // Define the output type as File
+
+    // Block to extract the file from the provided URL
+    block FileExtractor oftype HttpExtractor { url: url; }
+
+    // Block to interpret the extracted file as a text file with specific encoding
+    block FileTextInterpreter oftype TextFileInterpreter {encoding: "latin2";}
+
+    // Define the data flow from input to output through the defined blocks
+    inputName
+        ->FileExtractor
+        ->FileTextInterpreter
+        ->outputName;
+}
+
+// Composite block type for extracting CSV files with configurable properties
+composite blocktype CSVExtractor {
+    property url oftype text;  // URL of the CSV file
+    property delimiter oftype text: ',';  // Delimiter used in the CSV file
+    property enclosing oftype text: '';  // Character enclosing each field
+    property enclosingEscape oftype text: '';  // Character used to escape the enclosing character
+
+    input inputName oftype None;  // Define the input type as None
+    output outputName oftype Sheet;  // Define the output type as Sheet
+
+    // Block to extract the text file from the provided URL
+    block TextFileExtractor oftype TextFileExtractor { url: url; }
+
+    // Block to interpret the extracted text file as a CSV file with specified properties
+    block FileCSVInterpreter oftype CSVInterpreter {
+        delimiter: delimiter;
+        enclosing: enclosing;
+        enclosingEscape: enclosingEscape;
+    }
+
+    // Define the data flow from input to output through the defined blocks
+    inputName
+        ->TextFileExtractor
+        ->FileCSVInterpreter
+        ->outputName;
+}
+
+// Pipeline for processing goods data from a CSV file to an SQLite database
+pipeline GoodsPipeline {
+    GoodsCSVExtractor -> HeaderFooterDeleter -> ColumnDeleter -> GoodsTableInterpreter -> GoodsLoader;
+
+    // Block to extract goods data from a CSV file with a specific URL and delimiter
+    block GoodsCSVExtractor oftype CSVExtractor {
+        url: 'https://www-genesis.destatis.de/genesis/downloads/00/tables/46131-0014_00.csv';
+        delimiter: ';';
+    }
+
+    // Block to remove unwanted header and footer rows from the data
+    block HeaderFooterDeleter oftype RowDeleter {
+        delete: [row 1, row 2, row 3, row 4, row 5, row 6, row 7, row 8, row 41337, row 41338, row 41339];
+    }
+
+    // Block to remove unwanted columns from the data
+    block ColumnDeleter oftype ColumnDeleter {
+        delete: [column F, column G, column H, column I, column J, column K, column L, column M, column N, column O, column P, column Q, column R, column S, column T, column U, column V, column W, column X, column Y, column Z, column AA, column AB, column AC, column AD, column AE, column AF, column AG, column AH, column AI, column AJ, column AK, column AL, column AM, column AN, column AO, column AP, column AQ, column AR, column AS];
+    }
+
+    // Block to interpret the remaining data as a table with specified columns
+    block GoodsTableInterpreter oftype TableInterpreter {
+        header: false;
+        columns: [
+            "year" oftype PositiveValueType, 
+            "month" oftype GermanMonthType, 
+            "goods_id" oftype GoodsIdTypeValue, 
+            "goods_name" oftype text, 
+            "goods_source" oftype text, 
+            "abroad" oftype PositiveValueType, 
+            "total" oftype PositiveValueType, 
+        ];
+    }
+
+    // Block to load the interpreted table data into an SQLite database
+    block GoodsLoader oftype SQLiteLoader {
+        table: 'goods';
+        file: 'goodsTransportedByTrain.sqlite';
+    }
+}
+
+// Value type for positive integers with a constraint ensuring non-negative values
+valuetype PositiveValueType oftype integer {
+    constraints : [ PositiveValueConstraint ];
+}
+
+// Value type for German month names with a constraint ensuring valid month names
+valuetype GermanMonthType oftype text {
+    constraints: [GermanMonthConstraint];
+}
+
+// Value type for goods ID with a constraint ensuring valid format
+valuetype GoodsIdTypeValue oftype text {
+    constraints: [GoodsIdTypeConstraint];
+}
+
+// Constraint to ensure a value is non-negative
+constraint PositiveValueConstraint on integer :
+    value >= 0;
+
+// Constraint to ensure a value matches the required format for goods ID
+constraint GoodsIdTypeConstraint on text:
+    value matches /^NST7-[A-Z0-9]{3}$/;
+
+// Constraint to ensure a value is a valid German month name
+constraint GermanMonthConstraint on text:
+    value in ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
