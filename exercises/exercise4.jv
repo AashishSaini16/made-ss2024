@@ -1,0 +1,100 @@
+// Exercise 4 of MADE at FAU
+// Define the pipeline named TemperaturesPipeline
+pipeline TemperaturesPipeline {
+    // Define the sequence of blocks in the pipeline
+    HttpExtractor -> ZipExtractor ->
+    TemperatureFilePicker -> TextFileExtractor ->
+    CSVExtractor -> FirstColumnRenamer -> SecondColumnRenamer -> ColumnDeleter ->
+    TemperatureTableInterpreter -> TemperaturTransformer -> BatterietemperaturTransformer -> 
+    TemperatureLoader;
+
+    // Block to download the ZIP file from the specified URL
+    block HttpExtractor oftype HttpExtractor {
+        url : "https://www.mowesta.com/data/measure/mowesta-dataset-20221107.zip";
+    }
+
+    // Block to unzip the downloaded file
+    block ZipExtractor oftype ArchiveInterpreter {
+        archiveType : "zip";
+    }
+
+    // Block to select the CSV file from the unzipped contents
+    block TemperatureFilePicker oftype FilePicker  {
+        path : "/data.csv"; 
+    }
+
+    // Block to read the contents of the selected text file
+    block TextFileExtractor oftype TextFileInterpreter {
+    }
+
+    // Block to parse the text file as a CSV
+    block CSVExtractor oftype CSVInterpreter {
+        delimiter: ";"; 
+    }
+
+    // Block to rename the first row of columns from A1 to E1
+    block FirstColumnRenamer oftype CellWriter {
+        at: range A1:E1;
+        write : ["id", "producer", "model", "month", "temperature"];
+    }
+
+    // Block to rename the column at J1
+    block SecondColumnRenamer oftype CellWriter {
+        at: cell J1;
+        write : ["battery_temperature"];
+    }
+
+    // Block to delete unnecessary columns F, G, H, and I
+    block ColumnDeleter oftype ColumnDeleter {
+        delete : [column F, column G, column H, column I]; 
+    }
+
+    // Block to interpret the table structure and define column data types
+    block TemperatureTableInterpreter oftype TableInterpreter {
+        header: false; // Indicate that the CSV file does not have a header row
+        columns: [
+            "id" oftype PositiveValueType, 
+            "producer" oftype text,
+            "model" oftype text, 
+            "month" oftype PositiveValueType, 
+            "temperature" oftype decimal, 
+            "battery_temperature" oftype decimal,
+        ];
+    }
+
+    // Block to transform the 'temperature' column from Celsius to Fahrenheit
+    block TemperaturTransformer oftype TableTransformer {
+        inputColumns : ["temperature"]; 
+        outputColumn : "temperature"; 
+        use : CelsiusToFahrenheit; 
+    }
+
+    // Block to transform the 'battery_temperature' column from Celsius to Fahrenheit
+    block BatterietemperaturTransformer oftype TableTransformer {
+        inputColumns : ["battery_temperature"];
+        outputColumn : "battery_temperature"; 
+        use : CelsiusToFahrenheit; 
+    }
+
+    // Block to load the processed data into an SQLite database
+    block TemperatureLoader oftype SQLiteLoader {
+        table: 'temperatures'; 
+        file: 'temperatures.sqlite'; 
+    }
+
+    // Define the transformation rule for converting Celsius to Fahrenheit
+    transform CelsiusToFahrenheit {
+        from Celsius oftype decimal; 
+        to Fahrenheit oftype decimal; 
+        Fahrenheit: (Celsius * 9/5) + 32;
+    }
+}
+
+// Define a custom value type for positive integers
+valuetype PositiveValueType oftype integer {
+    constraints : [ PositiveValueConstraint ]; 
+}
+
+// Constraint to ensure the value is positive
+constraint PositiveValueConstraint on integer :
+    value >= 0;
