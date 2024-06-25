@@ -1,0 +1,74 @@
+// Exercise 5 of MADE at FAU
+pipeline GTFS {
+    // Define the sequence of operations in the pipeline
+    GTFSFeedExtractor -> 
+    StopsFilePicker -> 
+    TextFileInterpreter ->
+    CSVInterpreter ->
+    TableInterpreter -> 
+    TableLoader;
+
+    // Block to extract the GTFS feed from the provided URL
+    block GTFSFeedExtractor oftype GTFSExtractor {
+        url : "https://gtfs.rhoenenergie-bus.de/GTFS.zip";
+    }
+
+    // Block to select the stops file from the extracted GTFS feed
+    block StopsFilePicker oftype FilePicker {
+        path : "/stops.txt";
+    }
+
+    // Block to interpret the stops file as a text file
+    block TextFileInterpreter oftype TextFileInterpreter {
+    }
+
+    // Block to interpret the text file as a CSV file
+    block CSVInterpreter oftype CSVInterpreter {
+        delimiter : ",";
+        enclosing: '"';
+    }
+
+    // Block to interpret the CSV file as a table with specified columns
+    block TableInterpreter oftype TableInterpreter {
+        header : true;
+        columns : [
+            "stop_id" oftype integer,
+            "stop_name" oftype text,
+            "stop_lat" oftype GeographicType,
+            "stop_lon" oftype GeographicType,
+            "zone_id" oftype ZoneValueType,
+        ];
+    }
+
+    // Block to load the interpreted table into an SQLite database
+    block TableLoader oftype SQLiteLoader {
+        table: 'stops';
+        file: './gtfs.sqlite';
+    }
+}
+
+// Define a custom value type for zone IDs
+valuetype ZoneValueType oftype integer {
+    constraints : [ZoneidConstraintinteger];
+}
+
+// Constraint to specify the valid range for zone IDs
+constraint ZoneidConstraintinteger oftype RangeConstraint {
+   lowerBound: 1644;
+   lowerBoundInclusive: false;
+   upperBound: 1646;
+   upperBoundInclusive: false;
+}
+
+// Define a custom value type for geographic coordinates (latitude and longitude)
+valuetype GeographicType oftype decimal {
+    constraints : [GeographicConstraint];
+}
+
+// Constraint to specify the valid range for geographic coordinates
+constraint GeographicConstraint oftype RangeConstraint {
+   lowerBound: -90;
+   lowerBoundInclusive: true;
+   upperBound: 90;
+   upperBoundInclusive: true;
+}
