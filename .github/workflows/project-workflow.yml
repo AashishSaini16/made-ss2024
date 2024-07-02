@@ -18,4 +18,4 @@ jobs:
         with:
           python-version: 3.11
       - name: run tests
-        run: ./main/tests.sh
+        run: ./main/project/tests.sh
