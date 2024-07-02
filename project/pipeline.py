@@ -3,7 +3,30 @@ import os
 import pandas as pd
 import sqlite3
 
-data_path = 'data'
+data_path = 'C:/Users/aashi/Desktop/data'
+data_directory = 'data'
+
+# Function to download and save data
+def download_and_save_data(file, url):
+    print("Starting data download...")
+    os.makedirs(data_directory, exist_ok=True)
+    response = requests.get(url)
+    with open(file, 'wb') as f:
+        f.write(response.content)
+        
+    print("Data download completed successfully")
+
+# Function to rename columns
+def rename_columns(file1, file2, rename_map1, rename_map2):
+    print("Renaming columns...")
+    df1 = pd.read_csv(file1, sep=';')
+    df2 = pd.read_csv(file2, sep=';')
+
+    df1.rename(columns=rename_map1, inplace=True)
+    df2.rename(columns=rename_map2, inplace=True)
+    print("Column renaming completed successfully")
+    return [df1, df2]
+
 
 # Create a directory to store the data
 os.makedirs(data_path, exist_ok=True)
@@ -21,15 +44,9 @@ db_file = os.path.join(data_path, 'combined_data.sqlite')
 print('Downloading data...')
 
 # Download the first file
-response = requests.get(first_url)
-with open(first_file, 'wb') as f:
-    f.write(response.content)
-
+download_and_save_data(first_file, first_url)
 # Download the second file
-response = requests.get(second_url)
-with open(second_file, 'wb') as f:
-    f.write(response.content)
-
+download_and_save_data(second_file, second_url)
 print('Data downloaded and saved successfully to directory: {}'.format(data_path))
 
 # Load the data
@@ -37,13 +54,36 @@ print('Loading data...')
 data1 = pd.read_csv(first_file, sep=';')
 data2 = pd.read_csv(second_file, sep=';')
 
+# Define the column renaming dictionary for both datasets (update with actual column names and translations)
+rename_dict1 = {
+    'date': 'date',
+    'stock_fin_de_journee': 'stock_end_of_day'
+}
+
+rename_dict2 = {
+    'date': 'date',
+    'debit_fin_de_journee': 'debit_end_of_day'
+}
+
+# Rename the columns in data1 and data2 (French datasets)
+data1.rename(columns=rename_dict1, inplace=True)
+data2.rename(columns=rename_dict2, inplace=True)
+
 # Ensure the date columns are in datetime format for accurate merging
 data1['date'] = pd.to_datetime(data1['date'])
 data2['date'] = pd.to_datetime(data2['date'])
 
+# Identify common sources and pits (update with actual column names if different)
+common_sources = set(data1['source'].unique()).intersection(set(data2['source'].unique()))
+common_pits = set(data1['pits'].unique()).intersection(set(data2['pits'].unique()))
+
+# Filter datasets to only include common sources and pits
+data1_filtered = data1[data1['source'].isin(common_sources) & data1['pits'].isin(common_pits)]
+data2_filtered = data2[data2['source'].isin(common_sources) & data2['pits'].isin(common_pits)]
+
 # Merge the data on the common dates column, keeping only intersecting dates
 print('Merging data...')
-merged_data = pd.merge(data1, data2, on='date', how='inner')
+merged_data = pd.merge(data1_filtered, data2_filtered, on=['date', 'source', 'pits'], how='inner')
 
 # Save the merged data to a single SQLite database
 print('Saving merged data to sqlite database...')
