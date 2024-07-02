@@ -20,4 +20,6 @@ jobs:
       - name: Give permissions
         run: chmod +x ./main/project/tests.sh
       - name: run tests
-        run: ./main/project/tests.sh
+        run: |
+          cd main
+          ./project/tests.sh
