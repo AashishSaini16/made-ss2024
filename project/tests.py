@@ -3,7 +3,7 @@ import pandas as pd
 from pipeline import download_and_save_data, rename_columns
 
 # Define paths and URLs
-data_path = 'C:/Users/aashi/Desktop/made-ss2024/project/data'
+data_path = 'data'
 url1 = 'https://www.data.gouv.fr/fr/datasets/r/6f5cc4ea-ef1c-4a1d-b7c4-ad49f3970933'
 url2 = 'https://www.data.gouv.fr/fr/datasets/r/670bf487-69dc-4b38-9255-c71a0dc1c41f'
 file1 = os.path.join(data_path, 'gas-storage.csv')
