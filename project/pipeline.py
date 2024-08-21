@@ -1,20 +1,23 @@
-import requests
 import os
+import requests
 import pandas as pd
 import sqlite3
 
-data_path = 'C:/Users/aashi/Desktop/data'
+data_path = 'C:/Users/aashi/Desktop/made-ss2024/project/data'
 data_directory = 'data'
 
 # Function to download and save data
 def download_and_save_data(file, url):
-    print("Starting data download...")
+    print(f"Starting data download for {file} from {url}...")
     os.makedirs(data_directory, exist_ok=True)
     response = requests.get(url)
-    with open(file, 'wb') as f:
-        f.write(response.content)
-        
-    print("Data download completed successfully")
+    
+    if response.status_code == 200:
+        with open(file, 'wb') as f:
+            f.write(response.content)
+        print(f"Data download completed successfully for {file}")
+    else:
+        print(f"Failed to download data from {url}. Status code: {response.status_code}")
 
 # Function to rename columns
 def rename_columns(file1, file2, rename_map1, rename_map2):
@@ -26,10 +29,6 @@ def rename_columns(file1, file2, rename_map1, rename_map2):
     df2.rename(columns=rename_map2, inplace=True)
     print("Column renaming completed successfully")
     return [df1, df2]
-
-
-# Create a directory to store the data
-os.makedirs(data_path, exist_ok=True)
 
 # URLs of the datasets
 first_url = 'https://www.data.gouv.fr/fr/datasets/r/6f5cc4ea-ef1c-4a1d-b7c4-ad49f3970933'
@@ -43,9 +42,7 @@ db_file = os.path.join(data_path, 'combined_data.sqlite')
 # Download the data
 print('Downloading data...')
 
-# Download the first file
 download_and_save_data(first_file, first_url)
-# Download the second file
 download_and_save_data(second_file, second_url)
 print('Data downloaded and saved successfully to directory: {}'.format(data_path))
 
@@ -54,7 +51,7 @@ print('Loading data...')
 data1 = pd.read_csv(first_file, sep=';')
 data2 = pd.read_csv(second_file, sep=';')
 
-# Define the column renaming dictionary for both datasets (update with actual column names and translations)
+# Define the column renaming dictionary for both datasets
 rename_dict1 = {
     'date': 'date',
     'stock_fin_de_journee': 'stock_end_of_day'
@@ -65,7 +62,7 @@ rename_dict2 = {
     'debit_fin_de_journee': 'debit_end_of_day'
 }
 
-# Rename the columns in data1 and data2 (French datasets)
+# Rename the columns in data1 and data2
 data1.rename(columns=rename_dict1, inplace=True)
 data2.rename(columns=rename_dict2, inplace=True)
 
@@ -73,7 +70,7 @@ data2.rename(columns=rename_dict2, inplace=True)
 data1['date'] = pd.to_datetime(data1['date'])
 data2['date'] = pd.to_datetime(data2['date'])
 
-# Identify common sources and pits (update with actual column names if different)
+# Identify common sources and pits
 common_sources = set(data1['source'].unique()).intersection(set(data2['source'].unique()))
 common_pits = set(data1['pits'].unique()).intersection(set(data2['pits'].unique()))
 
@@ -86,9 +83,9 @@ print('Merging data...')
 merged_data = pd.merge(data1_filtered, data2_filtered, on=['date', 'source', 'pits'], how='inner')
 
 # Save the merged data to a single SQLite database
-print('Saving merged data to sqlite database...')
+print('Saving merged data to SQLite database...')
 conn = sqlite3.connect(db_file)
 merged_data.to_sql('merged_data', conn, if_exists='replace', index=False)
 conn.close()
 
-print('Merged data saved to sqlite database successfully')
+print('Merged data saved to SQLite database successfully')
