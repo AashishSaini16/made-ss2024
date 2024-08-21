@@ -3,7 +3,8 @@ import requests
 import pandas as pd
 import sqlite3
 
-data_path = 'C:/Users/aashi/Desktop/made-ss2024/project/data'
+# Use relative paths
+data_path = 'data'
 data_directory = 'data'
 
 # Function to download and save data
@@ -34,14 +35,13 @@ def rename_columns(file1, file2, rename_map1, rename_map2):
 first_url = 'https://www.data.gouv.fr/fr/datasets/r/6f5cc4ea-ef1c-4a1d-b7c4-ad49f3970933'
 second_url = 'https://www.data.gouv.fr/fr/datasets/r/670bf487-69dc-4b38-9255-c71a0dc1c41f'
 
-# File paths
+# File paths (relative)
 first_file = os.path.join(data_path, 'gas-storage.csv')
 second_file = os.path.join(data_path, 'gas-flow.csv')
 db_file = os.path.join(data_path, 'combined_data.sqlite')
 
 # Download the data
 print('Downloading data...')
-
 download_and_save_data(first_file, first_url)
 download_and_save_data(second_file, second_url)
 print('Data downloaded and saved successfully to directory: {}'.format(data_path))
